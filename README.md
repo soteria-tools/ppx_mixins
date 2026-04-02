@@ -51,10 +51,19 @@ ModuleTypeName (param [; param ...])
 
 and each `param` is one of:
 
-| Syntax        | Meaning                                   |
-|---------------|-------------------------------------------|
-| `name = Type` | equality constraint (`with type name = Type`) |
+| Syntax         | Meaning                                             |
+|----------------|-----------------------------------------------------|
+| `name = Type`  | equality constraint (`with type name = Type`)       |
 | `name := Type` | destructive substitution (`with type name := Type`) |
+
+`Type` can be any of:
+
+| Form                   | Example                    |
+|------------------------|----------------------------|
+| plain constructor      | `string`, `My_module.t`    |
+| `unit`                 | `unit`                     |
+| single-param applied   | `int list`, `string option` |
+| multi-param applied    | `(int, string) result`     |
 
 Multiple mixins are separated by `;`.  Multiple params within a mixin's
 parentheses are also separated by `;`.
@@ -122,6 +131,24 @@ end
                      and type t := my_type *)
 ```
 
+### Parameterised constraint RHS
+
+```ocaml
+module type S = sig
+  type my_type [@@mixins Container (elt = int list)]
+end
+(* expands to:
+   type my_type
+   include Container with type elt = int list and type t := my_type *)
+```
+
+Multi-parameter constructors use the same parenthesised tuple syntax as in
+type expressions:
+
+```ocaml
+type my_type [@@mixins Mapper (result_ = (int, string) result)]
+```
+
 ## Implementation overview
 
 The rewriter is implemented as a global `Ast_traverse.map` registered via
@@ -138,9 +165,8 @@ See [`lib/ppx_mixins.ml`](lib/ppx_mixins.ml) for the full documented source.
 
 ## Limitations
 
-- The RHS of each constraint must be a plain type constructor (possibly
-  dotted, e.g. `My_module.t`).  Parameterised types such as `int list` are
-  not yet supported.
+- Tuple types (`int * string`) and function types (`int -> string`) on the RHS
+  of a constraint are not supported.  Wrap them in a type alias if needed.
 - Only `sig` items are rewritten; `[@@mixins]` on a type inside a `struct` is
   not meaningful and will be left untouched (ppxlib will warn about an unused
   attribute).

@@ -151,4 +151,56 @@ let _check_s5 =
   let _ : M.key -> M.my_type -> M.value option = M.get in
   ()
 
+(* ── Test 6: composite RHS — single-param type constructor ── *)
+module type Container = sig
+  type t
+  type elt
+
+  val mem : elt -> t -> bool
+end
+
+module type S6 = sig
+  type my_type [@@mixins Container (elt = int list)]
+end
+
+(* Expands to:
+   type my_type
+   include Container with type elt = int list and type t := my_type *)
+
+let _check_s6 =
+  let module M : S6 = struct
+    type my_type = int list list
+    type elt = int list
+
+    let mem x m = List.mem x m
+  end in
+  let _ : M.elt -> M.my_type -> bool = M.mem in
+  ()
+
+(* ── Test 7: composite RHS — multi-param type constructor ── *)
+module type Mapper = sig
+  type t
+  type result_
+
+  val run : t -> result_
+end
+
+module type S7 = sig
+  type my_type [@@mixins Mapper (result_ = (int, string) result)]
+end
+
+(* Expands to:
+   type my_type
+   include Mapper with type result_ = (int, string) result and type t := my_type *)
+
+let _check_s7 =
+  let module M : S7 = struct
+    type my_type = int
+    type result_ = (int, string) result
+
+    let run x = Ok x
+  end in
+  let _ : M.my_type -> M.result_ = M.run in
+  ()
+
 let () = print_endline "All tests passed."

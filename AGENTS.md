@@ -68,6 +68,9 @@ test/
 - No external dependencies beyond `ppxlib`.
 - Keep the implementation in the single file `lib/ppx_mixins.ml`; do not split
   into multiple modules unless the file grows substantially.
+- **Do not use non-ASCII characters in comments** (e.g. `->` not `→`, `--` not
+  `—`).  ocamlformat reflows comment text, and Unicode arrows/dashes inside
+  `(* ... *)` blocks cause `Invalid character` build errors.
 
 ## Key design decisions
 
@@ -83,6 +86,32 @@ test/
   the outer level is processed.
 - `Driver.V2.register_transformation` is used (not a deriver) because the
   attribute is `[@@mixins]`, not `[@@deriving mixins]`.
+
+## RHS type expression parsing (`expr_to_core_type`)
+
+The constraint RHS is an OCaml expression that must be re-interpreted as a
+type.  The expression grammar does not match the type grammar:
+
+- Type application is postfix in type syntax (`int list`, `(int, string) result`)
+  but parses as a function call in expression syntax with **the parameter(s) as
+  the function and the constructor as the argument**:
+  - `int list`  ->  `Pexp_apply(Pexp_ident "int", [Pexp_ident "list"])`
+  - `(int, string) result`  ->  `Pexp_apply(Pexp_tuple [int; string], [Pexp_ident "result"])`
+  So the *argument* of the outermost `Pexp_apply` is always the constructor
+  name, and the *function* position holds the parameter(s).
+- `unit` parses as `Pexp_construct (Lident "()", None)`, not `Pexp_ident`.
+- Tuple types (`int * string`) parse as infix `*` operator applications, which
+  are **not supported** (the `*` operator is left-associative and deeply nested;
+  the result is ambiguous with multiplication).  Use a type alias instead.
+- Function types (`->`) are not supported.
+
+## Injection rule for the default `t` substitution
+
+Phase 2 checks whether the constraint list contains **any** binding whose LHS
+is exactly `"t"` (either `Subst ("t", _)` or `Eq ("t", _)`).  If none is
+found, `Subst ("t", ptyp_constr type_name [])` is **prepended**.  If the user
+writes an explicit `t = ...` or `t := ...`, injection is suppressed entirely —
+no duplicate `t` constraint is added.
 
 ## Making changes
 
@@ -100,3 +129,7 @@ When editing `lib/ppx_mixins.ml`:
 - Do not add a `[@@deriving ...]` interface or rename the attribute.
 - Do not split `lib/ppx_mixins.ml` into multiple files without a good reason.
 - Do not introduce dependencies beyond `ppxlib`.
+- Do not use Unicode characters (`→`, `—`, `──`, etc.) in OCaml source
+  comments; use ASCII equivalents (`->`, `--`, `--`).  The large banner
+  comments that already use `──` are fine because ocamlformat leaves them
+  untouched, but newly written prose inside `(* ... *)` blocks must be ASCII.
