@@ -5,7 +5,7 @@ description:
   "Expands `type my_type [@@mixins Mappable (key = string); Eq] into `type t include Mappable with type t := my_type and type key = string; include Eq with type t := my_type`"
 maintainer: ["Sacha-Élie Ayoun <sachaayoun@gmail.com>"]
 authors: ["Sacha-Élie Ayoun <sachaayoun@gmail.com>"]
-license: "Apache-2.00"
+license: "Apache-2.0"
 tags: ["ppx" "metaprogramming"]
 homepage: "https://github.com/soteria-tools/ppx_mixins"
 doc: "https://github.com/soteria-tools/ppx_mixins"
@@ -14,6 +14,7 @@ depends: [
   "dune" {>= "3.21"}
   "ocaml"
   "ppxlib"
+  "ocamlformat" {dev & = "0.29.0"}
   "odoc" {with-doc}
 ]
 build: [

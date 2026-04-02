@@ -20,7 +20,13 @@
  (synopsis "A PPX for mixing module type signatures into a type declaration")
  (description
   "Expands `type my_type [@@mixins Mappable (key = string); Eq] into `type t include Mappable with type t := my_type and type key = string; include Eq with type t := my_type`")
- (depends ocaml ppxlib)
+ (depends
+  ocaml
+  ppxlib
+  (ocamlformat
+   (and
+    :dev
+    (= 0.29.0))))
  (tags
   (ppx metaprogramming)))
 
