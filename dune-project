@@ -5,20 +5,21 @@
 (generate_opam_files true)
 
 (source
- (github username/reponame))
+ (github soteria-tools/ppx_mixins))
 
-(authors "Author Name <author@example.com>")
+(authors "Sacha-Élie Ayoun <sachaayoun@gmail.com>")
 
-(maintainers "Maintainer Name <maintainer@example.com>")
+(maintainers "Sacha-Élie Ayoun <sachaayoun@gmail.com>")
 
-(license LICENSE)
+(license Apache-2.0)
 
-(documentation https://url/to/documentation)
+(documentation https://github.com/soteria-tools/ppx_mixins)
 
 (package
  (name ppx_mixins)
  (synopsis "A PPX for mixing module type signatures into a type declaration")
- (description "Expands [@@mixins: include S1; include S2 with type k = int] on type declarations in signatures")
+ (description
+  "Expands `type my_type [@@mixins Mappable (key = string); Eq] into `type t include Mappable with type t := my_type and type key = string; include Eq with type t := my_type`")
  (depends ocaml ppxlib)
  (tags
   (ppx metaprogramming)))
