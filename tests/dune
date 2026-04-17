@@ -5,3 +5,9 @@
 
 (cram
  (deps standalone.exe))
+
+(test
+ (name test_ppx_mixins)
+ (libraries ppx_mixins)
+ (preprocess
+  (pps ppx_mixins)))
