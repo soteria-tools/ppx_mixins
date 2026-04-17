@@ -14,7 +14,7 @@ depends: [
   "dune" {>= "3.21"}
   "ocaml"
   "ppxlib"
-  "ocamlformat" {dev & = "0.29.0"}
+  "ocamlformat" {with-test & = "0.29.0"}
   "odoc" {with-doc}
 ]
 build: [

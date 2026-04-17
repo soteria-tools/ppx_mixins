@@ -25,7 +25,7 @@
   ppxlib
   (ocamlformat
    (and
-    :dev
+    :with-test
     (= 0.29.0))))
  (tags
   (ppx metaprogramming)))
