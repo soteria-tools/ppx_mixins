@@ -29,10 +29,7 @@ Test 2: multiple bare mixins -- each gets its own include with t := my_type
   > end
   > 
   > module type S = sig
-  >   type my_type
-  >   [@@mixins
-  >     Printable;
-  >     Comparable]
+  >   type my_type [@@mixins Printable + Comparable]
   > end
   > EOF
   $ ./standalone.exe --impl s2.ml
@@ -251,9 +248,7 @@ Test 10: multiple mixins with constraints
   > 
   > module type S = sig
   >   type my_type
-  >   [@@mixins
-  >     Printable;
-  >     Mappable (key = string; value = int)]
+  >   [@@mixins Printable + Mappable (key = string; value = int)]
   > end
   > EOF
   $ ./standalone.exe --impl s10.ml

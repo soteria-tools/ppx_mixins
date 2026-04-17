@@ -40,7 +40,8 @@ let _check_s1 =
     type my_type = int
 
     let to_string = string_of_int
-  end in
+  end
+  in
   let _ : M.my_type -> string = M.to_string in
   ()
 
@@ -58,7 +59,8 @@ let _check_s4 =
     type u = my_type
 
     let inspect x = string_of_float x
-  end in
+  end
+  in
   let _ : M.my_type -> string = M.inspect in
   ()
 
@@ -80,16 +82,14 @@ let _check_s4b =
     type u = my_type
 
     let inspect x = string_of_float x
-  end in
+  end
+  in
   let _ : M.my_type -> string = M.inspect in
   ()
 
-(* ── Test 2: multiple bare mixins ── *)
+(* ── Test 2: multiple bare mixins with [+] ── *)
 module type S2 = sig
-  type my_type
-  [@@mixins
-    Printable;
-    Comparable]
+  type my_type [@@mixins Printable + Comparable]
 end
 (* Expands to:
    type my_type
@@ -102,7 +102,8 @@ let _check_s2 =
 
     let to_string = string_of_int
     let compare = Int.compare
-  end in
+  end
+  in
   let _ : M.my_type -> string = M.to_string in
   let _ : M.my_type -> M.my_type -> int = M.compare in
   ()
@@ -126,7 +127,8 @@ let _check_s3 =
     type value = int
 
     let get k m = List.assoc_opt k m
-  end in
+  end
+  in
   let _ : M.key -> M.my_type -> M.value option = M.get in
   ()
 
@@ -147,7 +149,8 @@ let _check_s5 =
     type value = int
 
     let get k m = List.assoc_opt k m
-  end in
+  end
+  in
   let _ : M.key -> M.my_type -> M.value option = M.get in
   ()
 
@@ -173,7 +176,8 @@ let _check_s6 =
     type elt = int list
 
     let mem x m = List.mem x m
-  end in
+  end
+  in
   let _ : M.elt -> M.my_type -> bool = M.mem in
   ()
 
@@ -199,8 +203,38 @@ let _check_s7 =
     type result_ = (int, string) result
 
     let run x = Ok x
-  end in
+  end
+  in
   let _ : M.my_type -> M.result_ = M.run in
+  ()
+
+(* ── Test 8: multiple mixins with [+], both with arguments ── *)
+module type S8 = sig
+  type my_type
+  [@@mixins
+    Mappable
+      (key = string;
+       value = int)
+    + Weird (u := my_type)]
+end
+(* Expands to:
+   type my_type
+   include Mappable with type key = string and type value = int and type t := my_type
+   include Weird    with type u := my_type and type t := my_type *)
+
+let _check_s8 =
+  let module M : S8 = struct
+    type my_type = (string * int) list
+    type key = string
+    type value = int
+    type u = my_type
+
+    let get k m = List.assoc_opt k m
+    let inspect x = string_of_float (List.length x |> float_of_int)
+  end
+  in
+  let _ : M.key -> M.my_type -> M.value option = M.get in
+  let _ : M.my_type -> string = M.inspect in
   ()
 
 let () = print_endline "All tests passed."

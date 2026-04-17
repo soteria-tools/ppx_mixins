@@ -12,7 +12,7 @@ substitution.  `ppx_mixins` lets you express this intent concisely:
 
 ```ocaml
 module type S = sig
-  type my_type [@@mixins Printable; Comparable]
+  type my_type [@@mixins Printable + Comparable]
 end
 ```
 
@@ -39,7 +39,7 @@ Add `ppx_mixins` to your project's dependencies and preprocessors in `dune`:
 ## Syntax
 
 ```
-type <name> [@@mixins <mixin> [; <mixin> ...]]
+type <name> [@@mixins <mixin> [+ <mixin> ...]]
 ```
 
 where each `<mixin>` is:
@@ -65,8 +65,8 @@ and each `param` is one of:
 | single-param applied   | `int list`, `string option` |
 | multi-param applied    | `(int, string) result`     |
 
-Multiple mixins are separated by `;`.  Multiple params within a mixin's
-parentheses are also separated by `;`.
+Multiple mixins are separated by `+`.  Multiple params within a mixin's
+parentheses are separated by `;`.
 
 ## Automatic `t` substitution
 
@@ -97,7 +97,7 @@ end
 
 ```ocaml
 module type S = sig
-  type my_type [@@mixins Printable; Comparable]
+  type my_type [@@mixins Printable + Comparable]
 end
 (* expands to:
    type my_type
@@ -156,7 +156,7 @@ The rewriter is implemented as a global `Ast_traverse.map` registered via
 and `.mli` files and runs a three-phase pipeline on each annotated type
 declaration:
 
-1. **Parse** — flatten the `Pexp_sequence` expression tree into a `mixin list`.
+1. **Parse** — flatten the `Pexp_apply "+"` expression tree into a `mixin list`.
 2. **Inject** — prepend `t := <type_name>` to any mixin that has no `t` binding.
 3. **Desugar** — emit `psig_type` (without the attribute) followed by one
    `psig_include` per mixin.

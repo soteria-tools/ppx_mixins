@@ -20,8 +20,8 @@
      end
 
    The attribute payload is a plain OCaml expression (single_expr_payload).
-   Multiple mixins are separated by [;] at the top level (parsed by the OCaml
-   parser as [Pexp_sequence]).  Per-mixin parameters are also [;]-separated
+   Multiple mixins are separated by [+] at the top level (parsed by the OCaml
+   parser as [Pexp_apply "+"]).  Per-mixin parameters are [;]-separated
    inside parentheses.
 
    Constraint syntax within parameter lists:
@@ -39,7 +39,7 @@
    The transformation runs in three phases:
 
    Phase 1 — Parse
-     Recursively flatten the [Pexp_sequence] tree produced by the OCaml parser
+     Recursively flatten the [Pexp_apply "+"] tree produced by the OCaml parser
      into a [mixin list].  Each mixin carries a [module_path] (the longident of
      the module type) and a [constraint_ list] parsed from the optional argument.
      Per-mixin constraint RHS expressions are converted to [core_type] nodes via
@@ -169,10 +169,15 @@ let parse_mixin ~loc expr =
         "ppx_mixins: expected a module type name (e.g. 'Printable' or \
          'Mappable (key = string)')"
 
-(* Flatten the top-level sequence into a list of mixins. *)
+(* Flatten the top-level [+] chain into a list of mixins.
+   [A + B + C] is left-associative so the parser produces
+   [((A + B) + C)]; recursing on both sides handles all depths. *)
 let rec parse_mixins ~loc expr =
   match expr.pexp_desc with
-  | Pexp_sequence (a, b) -> parse_mixins ~loc a @ parse_mixins ~loc b
+  | Pexp_apply
+      ( { pexp_desc = Pexp_ident { txt = Lident "+"; _ }; _ },
+        [ (Nolabel, a); (Nolabel, b) ] ) ->
+      parse_mixins ~loc a @ parse_mixins ~loc b
   | _ -> [ parse_mixin ~loc expr ]
 
 (* ── Phase 2: inject default substitution ────────────────────────────────── *)

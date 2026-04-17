@@ -79,8 +79,9 @@ test/
   `;`-separated items inside `[@@attr: ...]` signature payloads.
 - Uppercase module type names (e.g. `Printable`) parse as `Pexp_construct` in
   expression context, not `Pexp_ident`.
-- Multiple mixins and multiple per-mixin params are both delimited by `;`,
-  which the parser renders as `Pexp_sequence`.
+- Multiple mixins are separated by `+` at the top level, which the parser
+  renders as `Pexp_apply "+"`.  Per-mixin params are `;`-separated inside
+  parentheses, rendered as `Pexp_sequence`.
 - The traversal uses `Ast_traverse.map` with `method! signature` calling
   `super#signature` **first** so that nested `sig` blocks are expanded before
   the outer level is processed.
