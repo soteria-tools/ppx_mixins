@@ -21,8 +21,10 @@
  (description
   "Expands `type my_type [@@mixins Mappable (key = string) + Eq] into `type t include Mappable with type t := my_type and type key = string; include Eq with type t := my_type`")
  (depends
-  ocaml
-  ppxlib
+  (ocaml
+   (>= 4.14.0))
+  (ppxlib
+   (= "0.28.0"))
   (ocamlformat
    (and
     :with-test

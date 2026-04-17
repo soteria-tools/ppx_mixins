@@ -1,11 +1,3 @@
-(executable
- (name standalone)
- (modules standalone)
- (libraries ppxlib ppx_mixins))
-
-(cram
- (deps standalone.exe))
-
 (test
  (name test_ppx_mixins)
  (libraries ppx_mixins)
