@@ -1,5 +1,5 @@
 (library
- (name ppx_mixins)
+ (public_name ppx_mixins)
  (kind ppx_rewriter)
  (libraries ppxlib)
  (preprocess
