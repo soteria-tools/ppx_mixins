@@ -1,0 +1,7 @@
+(executable
+ (name standalone)
+ (modules standalone)
+ (libraries ppxlib ppx_mixins))
+
+(cram
+ (deps standalone.exe))
