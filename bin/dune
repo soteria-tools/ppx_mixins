@@ -1,4 +1,0 @@
-(executable
- (public_name ppx_mixins)
- (name main)
- (libraries ppx_mixins))
