@@ -24,11 +24,7 @@
   (ocaml
    (>= 4.14.0))
   (ppxlib
-   (>= "0.28.0"))
-  (ocamlformat
-   (and
-    :with-test
-    (= 0.29.0))))
+   (>= "0.28.0")))
  (tags
   (ppx metaprogramming)))
 
