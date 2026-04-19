@@ -149,6 +149,31 @@ type expressions:
 type my_type [@@mixins Mapper (result_ = (int, string) result)]
 ```
 
+## Shorthand module type syntax
+
+When the primary type in the expanded signature should simply be named `t`,
+you can skip the `sig ... end` wrapper entirely and write:
+
+```ocaml
+module type S = [%mixins Printable + Comparable]
+```
+
+which expands to:
+
+```ocaml
+module type S = sig
+  type t
+  include Printable  with type t := t
+  include Comparable with type t := t
+end
+```
+
+All the same mixin syntax (params, constraints, `+`-separated lists) works
+identically to the `[@@mixins]` form.  The only difference is that the
+implicit primary type is always `t` -- there is no way to choose a different
+name with the shorthand.  If you need a different primary type name, use the
+full `[@@mixins]` attribute form.
+
 ## Implementation overview
 
 The rewriter is implemented as a global `Ast_traverse.map` registered via

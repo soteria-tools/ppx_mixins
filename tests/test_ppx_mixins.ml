@@ -237,4 +237,68 @@ let _check_s8 =
   let _ : M.my_type -> string = M.inspect in
   ()
 
+(* ── Test 9: [%mixins] shorthand -- single bare mixin ── *)
+module type T9 = [%mixins Printable]
+(* Expands to:
+   sig
+     type t
+     include Printable with type t := t
+   end *)
+
+let _check_t9 =
+  let module M : T9 = struct
+    type t = int
+
+    let to_string = string_of_int
+  end
+  in
+  let _ : M.t -> string = M.to_string in
+  ()
+
+(* ── Test 10: [%mixins] shorthand -- multiple bare mixins ── *)
+module type T10 = [%mixins Printable + Comparable]
+(* Expands to:
+   sig
+     type t
+     include Printable  with type t := t
+     include Comparable with type t := t
+   end *)
+
+let _check_t10 =
+  let module M : T10 = struct
+    type t = int
+
+    let to_string = string_of_int
+    let compare = Int.compare
+  end
+  in
+  let _ : M.t -> string = M.to_string in
+  let _ : M.t -> M.t -> int = M.compare in
+  ()
+
+(* ── Test 11: [%mixins] shorthand -- mixin with params ── *)
+module type T11 = [%mixins
+Mappable
+  (key = string;
+   value = int)]
+(* Expands to:
+   sig
+     type t
+     include Mappable with type key = string
+                       and type value = int
+                       and type t := t
+   end *)
+
+let _check_t11 =
+  let module M : T11 = struct
+    type t = (string * int) list
+    type key = string
+    type value = int
+
+    let get k m = List.assoc_opt k m
+  end
+  in
+  let _ : M.key -> M.t -> M.value option = M.get in
+  ()
+
 let () = print_endline "All tests passed."

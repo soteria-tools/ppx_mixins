@@ -1,9 +1,9 @@
-(* ppx_mixins — inline mixin includes for OCaml signatures
+(* ppx_mixins -- inline mixin includes for OCaml signatures
    =========================================================
 
-   This PPX rewrites a type declaration annotated with [@@mixins ...] inside a
-   [sig] block into the type declaration followed by one [include M with ...]
-   item per mixin.  For example:
+   This PPX supports two expansion forms.
+
+   Form 1: [@@mixins ...] attribute on a type declaration inside a [sig] block.
 
      module type S = sig
        type my_type [@@mixins Printable; Mappable (key = string; value := int)]
@@ -19,14 +19,28 @@
                           and type t := my_type
      end
 
-   The attribute payload is a plain OCaml expression (single_expr_payload).
-   Multiple mixins are separated by [+] at the top level (parsed by the OCaml
-   parser as [Pexp_apply "+"]).  Per-mixin parameters are [;]-separated
-   inside parentheses.
+   Form 2: [%mixins ...] extension as a module type expression.
+
+     module type S = [%mixins Printable + Comparable]
+
+   expands to:
+
+     module type S = sig
+       type t
+       include Printable  with type t := t
+       include Comparable with type t := t
+     end
+
+   The implicit primary type is always named [t] in the shorthand form.
+
+   The attribute/extension payload is a plain OCaml expression
+   (single_expr_payload).  Multiple mixins are separated by [+] at the top
+   level (parsed by the OCaml parser as [Pexp_apply "+"]).  Per-mixin
+   parameters are [;]-separated inside parentheses.
 
    Constraint syntax within parameter lists:
-     name = Type    →  with type name =  Type   (equality / sharing constraint)
-     name := Type   →  with type name := Type   (destructive substitution)
+     name = Type    ->  with type name =  Type   (equality / sharing constraint)
+     name := Type   ->  with type name := Type   (destructive substitution)
 
    The RHS [Type] is re-parsed from an expression to a [core_type].  Supported
    forms are:
@@ -38,7 +52,7 @@
 
    The transformation runs in three phases:
 
-   Phase 1 — Parse
+   Phase 1 -- Parse
      Recursively flatten the [Pexp_apply "+"] tree produced by the OCaml parser
      into a [mixin list].  Each mixin carries a [module_path] (the longident of
      the module type) and a [constraint_ list] parsed from the optional argument.
@@ -48,7 +62,7 @@
      type applications (e.g. [(int, string) result]).
      A bare [Constructor] with no argument yields an empty constraint list.
 
-   Phase 2 — Inject default substitution
+   Phase 2 -- Inject default substitution
      Mixin module types conventionally name their primary type [t].  If the
      constraint list contains no binding (neither [Eq] nor [Subst]) for the
      name ["t"], a [Subst ("t", ptyp_constr type_name [])] constraint is
@@ -57,15 +71,17 @@
      If the user supplies an explicit [t = ...] or [t := ...] constraint, the
      automatic injection is suppressed.
 
-   Phase 3 — Desugar
+   Phase 3 -- Desugar
      Each [mixin] is turned into a [psig_include] node:
        [include <module_path> with <constraint> and ...]
-     The original [psig_type] node is re-emitted without the [@@mixins]
-     attribute, followed by all the generated [psig_include] nodes.
+     For Form 1, the original [psig_type] node is re-emitted without the
+     [@@mixins] attribute, followed by all the generated [psig_include] nodes.
+     For Form 2, a bare [type t] declaration is emitted first, then all the
+     generated [psig_include] nodes, wrapped in a [Pmty_sig].
 
    The expansion is wired up as a global [Ast_traverse.map] registered via
    [Driver.V2.register_transformation], so it recurses into every [sig] block
-   in both [.ml] and [.mli] files, including nested [sig]s inside structures.
+   and every module type expression in both [.ml] and [.mli] files.
 *)
 
 open Ppxlib
@@ -251,12 +267,44 @@ let expand_type_decl ~loc rec_flag td =
       in
       Some (type_item :: include_items)
 
+(* ── [%mixins ...] module type extension ─────────────────────────────────── *)
+
+(* Expand a [%mixins payload] module type expression into a [Pmty_sig] with a
+   bare [type t] declaration followed by one [psig_include] per mixin.
+   The implicit primary type is always [t] for this shorthand form. *)
+let expand_mty_extension ~loc payload =
+  let open Ast_builder.Default in
+  (* Phase 1: parse mixin list from the payload expression *)
+  let mixins = parse_mixins ~loc payload in
+  (* Phase 2: inject [t := t] for any mixin that has no t binding *)
+  let mixins = List.map (inject_default_subst ~loc ~type_name:"t") mixins in
+  (* Phase 3: build include items *)
+  let include_items = List.map (mixin_to_sig_item ~loc) mixins in
+  (* Bare [type t] with no attributes *)
+  let t_decl =
+    type_declaration ~loc ~name:{ txt = "t"; loc } ~params:[] ~cstrs:[]
+      ~kind:Ptype_abstract ~private_:Public ~manifest:None
+  in
+  let type_item = psig_type ~loc Nonrecursive [ t_decl ] in
+  Ast_builder.Default.pmty_signature ~loc (type_item :: include_items)
+
 (* ── AST traversal ───────────────────────────────────────────────────────── *)
 
-(* Recursively walk the AST, expanding [@@mixins ...] at every signature level. *)
+(* Recursively walk the AST, expanding [@@mixins ...] at every signature level
+   and [%mixins ...] at every module type expression. *)
 let mapper =
   object
     inherit Ast_traverse.map as super
+
+    method! module_type mty =
+      let mty = super#module_type mty in
+      let loc = mty.pmty_loc in
+      match mty.pmty_desc with
+      | Pmty_extension
+          ( { txt = "mixins"; _ },
+            PStr [ { pstr_desc = Pstr_eval (payload, _); _ } ] ) ->
+          expand_mty_extension ~loc payload
+      | _ -> mty
 
     method! signature sig_ =
       let sig_ = super#signature sig_ in

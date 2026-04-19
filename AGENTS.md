@@ -2,9 +2,12 @@
 
 ## Project overview
 
-`ppx_mixins` is a ppxlib-based OCaml PPX rewriter.  It expands a
-`[@@mixins ...]` attribute on a `sig` type declaration into a series of
-`include M with type t := ...` items.
+`ppx_mixins` is a ppxlib-based OCaml PPX rewriter.  It supports two forms:
+
+- `[@@mixins ...]` attribute on a `sig` type declaration, which expands into a
+  series of `include M with type t := ...` items.
+- `[%mixins ...]` extension as a module type expression, which expands into a
+  `sig type t ... end` block with the same includes.
 
 The entire implementation lives in one file: `lib/ppx_mixins.ml`.
 
@@ -84,9 +87,17 @@ test/
   parentheses, rendered as `Pexp_sequence`.
 - The traversal uses `Ast_traverse.map` with `method! signature` calling
   `super#signature` **first** so that nested `sig` blocks are expanded before
-  the outer level is processed.
+  the outer level is processed.  The same depth-first order is used in
+  `method! module_type`.
 - `Driver.V2.register_transformation` is used (not a deriver) because the
   attribute is `[@@mixins]`, not `[@@deriving mixins]`.
+- **`[%mixins ...]` shorthand** -- a `Pmty_extension` node with name `"mixins"`
+  is handled in `method! module_type`.  The payload is extracted as a
+  `Pstr_eval` structure item (the same expression grammar as `[@@mixins]`).
+  The expansion produces a `Pmty_signature` containing a bare `type t`
+  declaration followed by one `psig_include` per mixin.  The implicit primary
+  type is always `t`; there is no way to choose a different name with the
+  shorthand form.
 
 ## RHS type expression parsing (`expr_to_core_type`)
 
@@ -121,9 +132,12 @@ When editing `lib/ppx_mixins.ml`:
 2. Run `dune exec test/test_ppx_mixins.exe` to verify the tests still pass.
 3. Run `dune fmt` to format all OCaml source files before committing.
 4. If you add a new constraint form or mixin syntax, add a corresponding test
-   case in `test/test_ppx_mixins.ml` using the same pattern as the existing
-   ones (define a module type with `[@@mixins ...]`, then check it with an
-   inline module).
+   case in `tests/test_ppx_mixins.ml` using the same pattern as the existing
+   ones:
+   - For `[@@mixins ...]`: define a `module type SN = sig type my_type [@@mixins ...] end`
+     and verify it with an inline `_check_sN` module.
+   - For `[%mixins ...]`: define a `module type TN = [%mixins ...]`
+     and verify it with an inline `_check_tN` module.
 
 ## What agents should NOT do
 
